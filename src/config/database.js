@@ -13,10 +13,10 @@ const { Pool } = pg; // Desestrutura o Pool
 
 // Configurações de conexão para PostgreSQL
 const pool = new Pool({
-    host: 'localhost',
+    host: '10.100.45.238', //10.100.45.238 IP SAVEINCLOUD
     port: '5432',
-    database: 'BD',
-    user: 'postgres',
+    database: 'uniclub',
+    user: 'uniclub',
     password: '#abc123',
     max: 10,
     idleTimeoutMillis: 30000,
