@@ -112,21 +112,35 @@ controllerAreas.get("/areas/:id", async function (req, res) {
 
     try {
         const areaDetalhes = await read(ssql, filtro);
+
+        // Caso a área não seja encontrada, retornamos erro
         if (areaDetalhes.length === 0) {
             return res.status(404).json({ error: 'Área não encontrada.' });
         }
 
+        // Processamento para garantir que 'equipamentos' seja sempre uma lista
         const area = {
             id: areaDetalhes[0]['id'],
             descricao: areaDetalhes[0]['descricao'],
             foto: areaDetalhes[0]['foto'],
-            equipamentos: areaDetalhes
-                .filter(element => element['equipamento'] !== null)
-                .map(element => ({
+            equipamentos: [] // Inicializando como lista vazia
+
+        };
+
+        // Agora, percorremos o resultado da consulta e populamos o campo 'equipamentos' como lista
+        areaDetalhes.forEach(element => {
+            if (element['equipamento'] !== null) {
+                area.equipamentos.push({
                     descricao: element['equipamento'],
                     quantidade: element['quantidade'],
-                }))
-        };
+                });
+            }
+        });
+
+        // Garantir que o campo 'equipamentos' sempre seja uma lista, mesmo que vazia
+        if (!Array.isArray(area.equipamentos)) {
+            area.equipamentos = [];
+        }
 
         return res.status(200).json(area);
     } catch (err) {
@@ -134,5 +148,6 @@ controllerAreas.get("/areas/:id", async function (req, res) {
         return res.status(500).json({ error: 'Erro ao consultar a área.' });
     }
 });
+
 
 export default controllerAreas;
