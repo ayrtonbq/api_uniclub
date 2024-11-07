@@ -4,21 +4,26 @@ import { verify } from "../util/jwt.js";
 
 const controllerAreas = Router();
 
-// Rota para buscar áreas disponíveis
-controllerAreas.post("/areas", async function (req, res) {
-    console.log("Requisição recebida para /areas");
-
+// Middleware para verificar token JWT
+const verifyToken = (req, res, next) => {
     const token = req.headers['authorization'];
-    console.log("Token recebido:", token); // Log do token recebido
-
     const result = verify(token);
     if (!result) {
-        console.log("Token inválido");
         return res.status(401).json({ error: "Token inválido" });
-    } 
-    console.log("Token válido");
+    }
+    req.user = result; // Salva os dados do usuário no objeto `req`
+    next();
+};
 
-    // Consulta SQL para buscar áreas disponíveis
+// Rota para buscar áreas disponíveis
+controllerAreas.post("/areas", verifyToken, async function (req, res) {
+    console.log("Requisição recebida para /areas");
+
+    // Validação do corpo da requisição
+    if (!req.body.data) {
+        return res.status(400).json({ error: "Data é obrigatória" });
+    }
+
     const ssql = `
         SELECT a.id, a.descricao 
         FROM area a 
@@ -26,38 +31,27 @@ controllerAreas.post("/areas", async function (req, res) {
             SELECT 1 
             FROM area_reserva ar 
             WHERE a.id = ar.id_area AND ar.data = $1
-        )
-    `;
-
+        )`;
     const filtro = [req.body.data];
 
     try {
-        const areasDisponiveis = await read(ssql, filtro); // Chamada da função read com await
-        console.log("Consulta bem-sucedida, retornando resultados");
+        const areasDisponiveis = await read(ssql, filtro);
         return res.status(200).json(areasDisponiveis);
     } catch (err) {
-        console.error("Erro ao consultar o banco de dados:", err); // Log do erro
-        return res.status(500).json({ error: 'Erro ao consultar o banco de dados.' }); // Mensagem de erro mais clara
+        console.error("Erro ao consultar o banco de dados:", err);
+        return res.status(500).json({ error: 'Erro ao consultar o banco de dados.' });
     }
 });
 
 // Rota para obter áreas reservadas
-controllerAreas.get("/areas/reservado", async function (req, res) {
-    const token = req.headers['authorization'];
-    const result = verify(token);
-
-    if (!result) {
-        return res.status(401).json({ error: "Token inválido" });
-    } 
-
-    const filtro = [];
+controllerAreas.get("/areas/reservado", verifyToken, async function (req, res) {
     const ssql = `
         SELECT a.id, a.descricao, ar.data 
         FROM area a 
         INNER JOIN area_reserva ar ON a.id = ar.id_area 
         WHERE ar.id_associado = $1 AND ar.data >= CURRENT_DATE
     `;
-    filtro.push(result['id']);
+    const filtro = [req.user['id']];
 
     try {
         const areasReservadas = await read(ssql, filtro);
@@ -69,20 +63,17 @@ controllerAreas.get("/areas/reservado", async function (req, res) {
 });
 
 // Rota para enviar reserva de área
-controllerAreas.post("/areas/envio", async function (req, res) {
-    const token = req.headers['authorization'];
-    const result = verify(token);
-
-    if (!result) {
-        return res.status(401).json({ error: "Token inválido" });
+controllerAreas.post("/areas/envio", verifyToken, async function (req, res) {
+    // Validação do corpo da requisição
+    if (!req.body.area || !req.body.data) {
+        return res.status(400).json({ error: "Área e data são obrigatórios" });
     }
 
     const ssql = `
         INSERT INTO area_reserva (id_area, data, id_associado)
         VALUES ($1, $2, $3)
     `;
-
-    const filtro = [req.body.area, req.body.data, result['id']];
+    const filtro = [req.body.area, req.body.data, req.user['id']];
 
     try {
         await write(ssql, filtro);
@@ -94,17 +85,10 @@ controllerAreas.post("/areas/envio", async function (req, res) {
 });
 
 // Rota para obter detalhes de uma área específica
-controllerAreas.get("/areas/:id", async function (req, res) {
-    const token = req.headers['authorization'];
-    const result = verify(token);
-
-    if (!result) {
-        return res.status(401).json({ error: "Token inválido" });
-    }
-
+controllerAreas.get("/areas/:id", verifyToken, async function (req, res) {
     const filtro = [req.params.id];
     const ssql = `
-        SELECT a.*, ae.descricao AS equipamento, ae.quantidade 
+        SELECT a.*, ae.descricao AS equipamento, ae.quantidade, encode(a.foto, 'hex') AS foto 
         FROM area a
         LEFT JOIN area_equipamentos ae ON a.id = ae.id_area
         WHERE a.id = $1
@@ -113,34 +97,21 @@ controllerAreas.get("/areas/:id", async function (req, res) {
     try {
         const areaDetalhes = await read(ssql, filtro);
 
-        // Caso a área não seja encontrada, retornamos erro
         if (areaDetalhes.length === 0) {
             return res.status(404).json({ error: 'Área não encontrada.' });
         }
 
-        // Processamento para garantir que 'equipamentos' seja sempre uma lista
         const area = {
             id: areaDetalhes[0]['id'],
             descricao: areaDetalhes[0]['descricao'],
-            foto: areaDetalhes[0]['foto'],
-            equipamentos: [] // Inicializando como lista vazia
-
-        };
-
-        // Agora, percorremos o resultado da consulta e populamos o campo 'equipamentos' como lista
-        areaDetalhes.forEach(element => {
-            if (element['equipamento'] !== null) {
-                area.equipamentos.push({
+            foto: areaDetalhes[0]['foto'], // Foto como HEX
+            equipamentos: areaDetalhes
+                .filter(element => element['equipamento'] !== null)
+                .map(element => ({
                     descricao: element['equipamento'],
                     quantidade: element['quantidade'],
-                });
-            }
-        });
-
-        // Garantir que o campo 'equipamentos' sempre seja uma lista, mesmo que vazia
-        if (!Array.isArray(area.equipamentos)) {
-            area.equipamentos = [];
-        }
+                }))
+        };
 
         return res.status(200).json(area);
     } catch (err) {
@@ -148,6 +119,5 @@ controllerAreas.get("/areas/:id", async function (req, res) {
         return res.status(500).json({ error: 'Erro ao consultar a área.' });
     }
 });
-
 
 export default controllerAreas;
