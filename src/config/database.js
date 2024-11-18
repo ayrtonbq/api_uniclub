@@ -1,23 +1,15 @@
 import 'dotenv/config';
-import pg from 'pg'; // Importa o pacote 'pg'
+import pg from 'pg';
 
-const { Pool } = pg; // Desestrutura o Pool
+const { Pool } = pg;
 
-// Exibe as variáveis de ambiente para verificar se estão sendo carregadas corretamente
-// console.log('Configurações do Banco de Dados:');
-// console.log('Host:', process.env.DB_HOST);
-// console.log('Port:', process.env.DB_PORT);
-// console.log('Database:', process.env.DB_PATH);
-// console.log('User:', process.env.DB_USER);
-// console.log('Password:', process.env.DB_PASS); // Mostre a senha apenas para debug, remova em produção
-
-// Configurações de conexão para PostgreSQL
+// Configurações de conexão para PostgreSQL usando variáveis de ambiente
 const pool = new Pool({
-    host: 'node206951-uniclub.sp1.br.saveincloud.net.br', //10.100.45.238 IP SAVEINCLOUD
-    port: '5432',
-    database: 'uniclub',
-    user: 'uniclub',
-    password: '#abc123',
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    database: process.env.DB_PATH,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
     max: 10,
     idleTimeoutMillis: 30000,
 });
@@ -36,25 +28,21 @@ pool.connect((err, client, release) => {
 async function read(ssql, params) {
     const client = await pool.connect();
     try {
-        console.log("Executing query:", ssql, "with parameters:", params); // Log da consulta
         const result = await client.query(ssql, params);
         
         if (result.rows.length === 0) {
-            console.warn("Query returned no results."); // Aviso se não houver resultados
+            console.warn("Query returned no results."); 
         } else {
-            console.log("Query executed successfully. Number of rows returned:", result.rows.length); // Log de sucesso
         }
 
-        return result.rows; // Retorna apenas as linhas do resultado
+        return result.rows; 
     } catch (err) {
-        console.error('Erro na consulta:', err.message); // Log do erro com mensagem
-        throw new Error('Database query failed: ' + err.message); // Lança um erro mais informativo
+        console.error('Erro na consulta:', err.message); 
+        throw new Error('Database query failed: ' + err.message); 
     } finally {
-        client.release(); // Libera o cliente, independentemente de sucesso ou erro
+        client.release(); 
     }
 }
-
-
 
 // Função para escrever dados no banco de dados PostgreSQL
 async function write(ssql, params) {
