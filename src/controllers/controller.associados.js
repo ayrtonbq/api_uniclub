@@ -19,7 +19,6 @@ app.get('/associados', async (req, res) => {
     }
 });
 
-// Inicie o servidor (porta 3000 por exemplo)
 app.listen(3000, () => {
     console.log('Servidor rodando na porta 3000');
 });
