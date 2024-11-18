@@ -87,6 +87,8 @@ controllerUsuarios.post("/usuarios/login", async function (req, res) {
 
 controllerUsuarios.put('/usuarios/atualizar/cadastro', upload.single('foto'), function (req, res) {
     const token = req.headers['authorization'];
+    console.log('Token recebido:', token);
+
     let result = verify(token);
 
     if (!result) {
