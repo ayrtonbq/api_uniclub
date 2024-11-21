@@ -120,4 +120,64 @@ controllerAreas.get("/areas/:id", verifyToken, async function (req, res) {
     }
 });
 
+
+controllerAreas.delete("/areas/cancelar", verifyToken, async function (req, res) {
+    const { id_area, data } = req.query; // Certifique-se de que os parâmetros estão sendo lidos do query
+    const userId = req.user['id'];
+
+    console.log("ID da Área recebida:", id_area);  // Log do id_area recebido
+    console.log("Data da Reserva recebida:", data);  // Log da data recebida
+    console.log("ID do usuário autenticado:", userId);  // Log do id do usuário autenticado
+
+    if (!id_area || !data) {
+        console.log("Erro: id_area e data são obrigatórios.");
+        return res.status(400).json({ error: "ID da área e data são obrigatórios." });
+    }
+
+    // Verificar se a reserva existe no banco de dados
+    const checkSql = `
+        SELECT id_associado, id_area, data
+        FROM area_reserva 
+        WHERE id_area = $1 AND id_associado = $2 AND data = $3
+    `;
+    const checkFiltro = [id_area, userId, data];
+
+    try {
+        const checkResult = await read(checkSql, checkFiltro);
+
+        console.log("Resultado da verificação da reserva:", checkResult);
+
+        if (checkResult.length === 0) {
+            console.log("Erro: Reserva não encontrada ou você não tem permissão para cancelá-la.");
+            return res.status(404).json({ error: 'Reserva não encontrada ou você não tem permissão para cancelá-la.' });
+        }
+
+        const { id_associado, id_area, data } = checkResult[0];
+
+        const ssql = `
+            DELETE FROM area_reserva
+            WHERE id_area = $1 
+            AND id_associado = $2 
+            AND data = $3
+        `;
+        const filtro = [id_area, userId, data];
+
+        const result = await write(ssql, filtro);
+
+        if (result.rowCount === 0) {
+            console.log("Erro: Nenhuma linha afetada pelo DELETE.");
+            return res.status(404).json({ error: 'Reserva não encontrada ou você não tem permissão para cancelá-la.' });
+        }
+
+        console.log("Reserva cancelada com sucesso!");
+        return res.status(200).json({ message: 'Reserva cancelada com sucesso.' });
+
+    } catch (err) {
+        console.error("Erro ao cancelar a reserva:", err);
+        return res.status(500).json({ error: 'Erro ao cancelar a reserva.' });
+    }
+});
+
+
+
 export default controllerAreas;
