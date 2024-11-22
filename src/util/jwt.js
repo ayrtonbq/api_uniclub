@@ -2,7 +2,7 @@ import 'dotenv/config';
 import jwt from 'jsonwebtoken';
 
 // Utilize a variável de ambiente AUTH_SECRET
-const authSecret = process.env.AUTH_SECRET;
+const authSecret = "~e.3x2<o2i#y_e~08z?d*!w~(g:qrl1e,w;{,e<hphhl,1e!@v(1].*d>l`kfpj";
 
 function sign(data) {
     // Use a chave secreta do .env para criar o token
