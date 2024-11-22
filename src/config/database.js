@@ -6,10 +6,10 @@ const { Pool } = pg;
 // Configurações de conexão para PostgreSQL usando variáveis de ambiente
 
 const pool = new Pool({
-    host: node206951-uniclub.sp1.br.saveincloud.net.br,
+    host: "node206951-uniclub.sp1.br.saveincloud.net.br",
     port: 11088,
-    database: uniclub,
-    user: uniclub,
+    database: "uniclub",
+    user: "uniclub",
     password: "#abc123",
     max: 10,
     idleTimeoutMillis: 30000,
