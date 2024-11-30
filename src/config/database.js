@@ -7,7 +7,7 @@ const { Pool } = pg;
 
 const pool = new Pool({
     host: "node206951-uniclub.sp1.br.saveincloud.net.br",
-    port: 11088,
+    port: 5432,
     database: "uniclub",
     user: "uniclub",
     password: "#abc123",
