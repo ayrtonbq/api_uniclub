@@ -182,57 +182,36 @@ controllerUsuarios.put('/usuarios/atualizar/cadastro', upload.single('foto'), as
 });
 
 
-controllerUsuarios.put("/usuarios/atualizar/senha", async function (req, res) {
-    const token = req.headers['authorization'];
-    let result = verify(token);
-
-    if (!result) {
-        return res.status(401).json({});
-    } else {
-        let filtro = [];
-        let ssql;
-
-        if (req.body.categoria == 1) {
-            ssql = `select cpf from associado `;
-        } else {
-            ssql = `select cpf from dependente `;
-        }
-
-        ssql += `where cpf = $1 and senha = $2`;
-        filtro.push(result['cpf'], req.body.senhaAtual);
-
-        await new Promise((resolve, reject) => read(ssql, filtro, function (err, result) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(result);
-            }
-        })).then(result => {
-            if (result.length == 0) {
-                return res.status(404).json({});
-            } else {
-                if (req.body.categoria == 1) {
-                    ssql = `update associado `;
-                } else {
-                    ssql = `update dependente `;
-                }
-
-                ssql += `set senha = $1 where cpf = $2`;
-
-                filtro = [req.body.senhaNova, result[0]['cpf']];
-
-                write(ssql, filtro, function (err, result) {
-                    if (err) {
-                        return res.status(500).json(err);
-                    } else {
-                        return res.status(200).json({});
-                    }
-                });
-            }
-        })
-        .catch(err => res.status(500).json(err));
+controllerUsuarios.put("/usuarios/atualizar/senha", async (req, res) => {
+    try {
+      const token = req.headers['authorization'];
+      const result = verify(token);
+      if (!result) {
+        return res.status(401).json({ error: "Usuário não autorizado" });
+      }
+  
+      const ssql = `SELECT cpf FROM associado WHERE cpf = $1 AND senha = $2`;
+      const filtro = [result['cpf'], req.body.senhaAtual];
+      const queryResult = await read(ssql, filtro);
+  
+      if (queryResult.length === 0) {
+        console.warn("Senha atual incorreta para CPF:", result['cpf']);
+        return res.status(404).json({ error: "Senha atual incorreta" });
+      }
+  
+      const updateSsql = `UPDATE associado SET senha = $1 WHERE cpf = $2`;
+      const updateFiltro = [req.body.senhaNova, result['cpf']];
+      await write(updateSsql, updateFiltro);
+  
+      return res.status(200).json({ message: "Senha alterada com sucesso" });
+    } catch (err) {
+      console.error("Erro ao processar a alteração de senha:", err);
+      return res.status(500).json({ error: "Erro interno do servidor", details: err.message });
     }
-});
+  });
+  
+
+
 
 controllerUsuarios.put("/usuarios/atualizar/foto", upload.single('foto'), function (req, res) {
     if (!req.file) {
