@@ -1,16 +1,23 @@
 import 'dotenv/config';
-import pg from 'pg';
+import pg from 'pg'; // Importa o pacote 'pg'
 
-const { Pool } = pg;
+const { Pool } = pg; // Desestrutura o Pool
 
-// Configurações de conexão para PostgreSQL usando variáveis de ambiente
+// Exibe as variáveis de ambiente para verificar se estão sendo carregadas corretamente
+// console.log('Configurações do Banco de Dados:');
+// console.log('Host:', process.env.DB_HOST);
+// console.log('Port:', process.env.DB_PORT);
+// console.log('Database:', process.env.DB_PATH);
+// console.log('User:', process.env.DB_USER);
+// console.log('Password:', process.env.DB_PASS); // Mostre a senha apenas para debug, remova em produção
 
+// Configurações de conexão para PostgreSQL
 const pool = new Pool({
-    host: "node206951-uniclub.sp1.br.saveincloud.net.br",
-    port: 5432,
-    database: "uniclub",
-    user: "uniclub",
-    password: "#abc123",
+    host: 'node206951-uniclub.sp1.br.saveincloud.net.br', //10.100.45.238 IP SAVEINCLOUD
+    port: 5432, //quando subir nuvem altarar para 5432
+    database: 'uniclub',
+    user: 'uniclub',
+    password: '#abc123',
     max: 10,
     idleTimeoutMillis: 30000,
 });
@@ -27,49 +34,46 @@ pool.connect((err, client, release) => {
 
 // Função para ler dados do banco de dados PostgreSQL
 async function read(ssql, params) {
-    console.log("Executando consulta SQL:", ssql);
-    console.log("Parâmetros da consulta:", params);
-    
     const client = await pool.connect();
     try {
+        console.log("Executing query:", ssql, "with parameters:", params); // Log da consulta
         const result = await client.query(ssql, params);
         
         if (result.rows.length === 0) {
-            console.warn("Consulta não retornou resultados."); 
+            console.warn("Query returned no results."); // Aviso se não houver resultados
         } else {
-            console.log("Consulta executada com sucesso. Resultados:", result.rows);
+            console.log("Query executed successfully. Number of rows returned:", result.rows.length); // Log de sucesso
         }
 
-        return result.rows; 
+        return result.rows; // Retorna apenas as linhas do resultado
     } catch (err) {
-        console.error('Erro na consulta:', err.message); 
-        throw new Error('Erro na consulta ao banco de dados: ' + err.message); 
+        console.error('Erro na consulta:', err.message); // Log do erro com mensagem
+        throw new Error('Database query failed: ' + err.message); // Lança um erro mais informativo
     } finally {
-        client.release(); 
+        client.release(); // Libera o cliente, independentemente de sucesso ou erro
     }
 }
 
-// Função para escrever dados no banco de dados PostgreSQL
+
 async function write(ssql, params) {
-    console.log("Executando SQL de escrita:", ssql);
-    console.log("Parâmetros da escrita:", params);
-    
     const client = await pool.connect();
     try {
+        console.log("Executando query SQL:", ssql);
+        console.log("Parâmetros da query:", params);
+
         const result = await client.query(ssql, params);
-        console.log("Escrita executada com sucesso:", result);
+        
+        // Log do resultado
+        console.log("Resultado da query:", result);
+
         return result;
     } catch (err) {
-        console.error('Erro na escrita:', err.message);
-        throw new Error('Erro na escrita ao banco de dados: ' + err.message); 
+        console.log("Erro ao executar a query no write:", err);
+        throw err; // Lançar o erro para tratamento posterior
     } finally {
         client.release();
     }
 }
 
-// Eventos adicionais de conexão do pool
-pool.on('error', (err) => {
-    console.error('Erro inesperado no pool:', err);
-});
 
 export { read, write };
